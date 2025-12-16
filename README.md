@@ -3,6 +3,16 @@
 This repository provides a script which automatically configures detected firefox and chromium based browsers that are installed as flatpaks to communicate with (the flatpak version of) KeepassXC.
 During my usage, the result has been stable for months without having to refresh the setup, however, it's not impossible for this to break eventually (at which point you will likely just have to rerun the script).
 
+## Requirements
+
+- **podman:** At the moment, this script requires podman to be installed. This requirement will be removed in the future.
+- **Zen Browser Workaround:** The [Zen browser](https://zen-browser.app/) currently requires this workaround to function correctly:
+  ```bash
+  flatpak override app.zen_browser.zen --persist=.mozilla \
+  && mkdir -p "$HOME/.var/app/app.zen_browser.zen/.mozilla" \
+  && ln -s ../.zen/native-messaging-hosts "$HOME/.var/app/app.zen_browser.zen/.mozilla/native-messaging-hosts"
+  ```
+
 ## Usage
 
 1. Install all the flatpak browsers you want, as well as the flatpak version of keepassxc, e.g.:

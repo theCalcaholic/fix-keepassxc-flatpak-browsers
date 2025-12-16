@@ -6,6 +6,7 @@ from pathlib import Path
 import json
 import shutil
 import subprocess
+import urllib.request
 
 
 class BrowserConfig:
@@ -62,26 +63,31 @@ with firefox_host_nmh_kpcx_config.open(mode="r", encoding="utf-8") as f:
 with chromium_host_nmh_kpxc_config.open(mode="r", encoding="utf-8") as f:
     chromium_kpxc_nmh_config_data = json.load(f)
 
-#res = subprocess.run([
-#    "podman", "run", "--rm", 
-#    "-v", f"{home}/.mozilla/native-messaging-hosts:/nmh:z",
-#    "alpine:latest",
-#    "sh", "-c",
-#    "apk add keepassxc-proxy-static && keepassxc-proxy-install -d /nmh firefox && chmod +x /nmh/keepassxc-proxy"
-#])
-res1 = subprocess.run([
-  "podman", "run", "--rm",
-  "-v", str(firefox_host_nmh_kpcx_config.parent) + ":/nmh:z",
-  "rust:alpine",
-  "sh", "-c",
-  "apk add git && "
-  "git clone https://github.com/varjolintu/keepassxc-proxy-rust.git && cd keepassxc-proxy-rust &&"
-  "RUSTFLAGS='-C link-arg=-s -Clink-self-contained=y -Clinker=rust-lld' cargo build --release --target x86_64-unknown-linux-musl && "
-  "cp target/x86_64-unknown-linux-musl/release/keepassxc-proxy /nmh/"
-])
-if res1.returncode != 0:
-    print(f"WARN: Retrieving keepassxc-proxy failed with exit code {res1.returncode}: '{res1.stderr}'")
-    sys.exit(1)
+container_cmd: str | None = None
+if shutil.which("podman") is not None:
+    container_cmd = "podman"
+elif shutil.which("docker") is not None:
+    res0 = subprocess.run(["docker", "-v"])
+    if res0.returncode == 0:
+        container_cmd = "docker"
+
+if container_cmd is None:
+    urllib.request.urlretrieve("https://github.com/theCalcaholic/fix-keepassxc-flatpak-browsers/releases/latest/download/keepassxc-proxy", firefox_host_nmh_kpcx_config.parent / 'keepassxc-proxy')
+    os.chmod(firefox_host_nmh_kpcx_config.parent / 'keepassxc-proxy', 0o750)
+else:
+    res1 = subprocess.run([
+        container_cmd, "run", "--rm",
+        "-v", str(firefox_host_nmh_kpcx_config.parent) + ":/nmh:z",
+        "docker.io/rust:alpine",
+        "sh", "-c",
+        "apk add git && "
+        "git clone https://github.com/varjolintu/keepassxc-proxy-rust.git && cd keepassxc-proxy-rust &&"
+        "RUSTFLAGS='-C link-arg=-s -Clink-self-contained=y -Clinker=rust-lld' cargo build --release --target x86_64-unknown-linux-musl && "
+        "cp target/x86_64-unknown-linux-musl/release/keepassxc-proxy /nmh/"
+    ])
+    if res1.returncode != 0:
+        print(f"WARN: Retrieving keepassxc-proxy failed with exit code {res1.returncode}: '{res1.stderr}'")
+        sys.exit(1)
 
 shutil.copy(firefox_host_nmh_kpcx_config.parent / "keepassxc-proxy", chromium_host_nmh_kpxc_config.parent / "keepassxc-proxy")
 

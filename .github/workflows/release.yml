@@ -1,0 +1,174 @@
+on:
+  push:
+    branches:
+      - main
+    tags:
+      - "v*"
+jobs:
+  build-keepassxc-proxy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Build keepassxc-proxy
+        run: >
+          set -ex;
+          mkdir out;
+          docker run --rm -v "$PWD/out:/out:z" rust:alpine sh -c "apk add git
+          && git clone https://github.com/varjolintu/keepassxc-proxy-rust.git
+          && cd keepassxc-proxy-rust
+          && RUSTFLAGS='-C link-arg=-s -Clink-self-contained=y -Clinker=rust-lld' cargo build --release --target x86_64-unknown-linux-musl 
+          && cp target/x86_64-unknown-linux-musl/release/keepassxc-proxy /out/";
+      - name: Upload keepassxc-proxy to artifact store
+        uses: actions/upload-artifact@v4
+        with:
+          name: "keepassxc-proxy"
+          path: "out/keepassxc-proxy"
+          if-no-files-found: 'error'
+
+  test:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+        with:
+          ref: "${{ github.head_ref || github.ref_name }}"
+      - name: Install Flatpaks to test
+        run: |
+          sudo apt-get install -y flatpak
+          sudo flatpak remote-add --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo
+          for app in org.mozilla.firefox io.gitlab.librewolf-community app.zen_browser.zen net.mullvad.MullvadBrowser org.chromium.Chromium com.brave.Browser com.google.Chrome
+          do
+            sudo flatpak install --noninteractive "$app"
+          done
+      - name: Setup test directories
+        run: |
+          mkdir -p "$HOME/.var/app/"{org.mozilla.firefox,io.gitlab.librewolf-community,app.zen_browser.zen,net.mullvad.MullvadBrowser,org.chromium.Chromium,com.brave.Browser}/
+          mkdir -p "$HOME/.var/app/"{org.mozilla.firefox/.mozilla/native-messaging-hosts,com.brave.Browser/config/BraveSoftware/Brave-Browser/NativeMessagingHosts}
+          echo 'deprecated' > "$HOME/.var/app/org.mozilla.firefox/.mozilla/native-messaging-hosts/keepassxc-proxy"
+          echo 'deprecated' > "$HOME/.var/app/com.brave.Browser/config/BraveSoftware/Brave-Browser/NativeMessagingHosts/org.keepassxc.keepassxc_browser.json"
+          mkdir -p "$HOME/.mozilla/native-messaging-hosts" "$HOME/.config/chromium/NativeMessagingHosts"
+          cat <<'EOF' > "$HOME/.mozilla/native-messaging-hosts/org.keepassxc.keepassxc_browser.json"
+          {
+            "allowed_extensions": [
+              "keepassxc-browser@keepassxc.org"
+            ],
+            "description": "KeePassXC integration with native messaging support",
+            "name": "org.keepassxc.keepassxc_browser",
+            "path": "/var/lib/flatpak/exports/bin/org.keepassxc.KeePassXC",
+            "type": "stdio"
+          }
+          EOF
+          cat <<'EOF' > "$HOME/.config/chromium/NativeMessagingHosts/org.keepassxc.keepassxc_browser.json"
+          {
+            "allowed_origins": [
+              "chrome-extension://pdffhmdngciaglkoonimfcmckehcpafo/",
+              "chrome-extension://oboonakemofpalcgghocfoadofidjkkk/"
+            ],
+            "description": "KeePassXC integration with native messaging support",
+            "name": "org.keepassxc.keepassxc_browser",
+            "path": "/var/lib/flatpak/exports/bin/org.keepassxc.KeePassXC",
+            "type": "stdio"
+          }
+          EOF
+      - name: Run script
+        run: |
+          python3 main.py
+      - name: Test script results
+        run: |
+          set -ex
+          
+          test -f "$HOME/.mozilla/native-messaging-hosts/keepassxc-proxy" || {
+            echo "ERROR: keepassxc-proxy is missing!"
+            exit 1
+          }
+          test -f "$HOME/.config/chromium/NativeMessagingHosts/keepassxc-proxy" || {
+            echo "ERROR: keepassxc-proxy is missing!"
+            exit 1
+          }
+          jq -r -S 'del(.path)' "$HOME/.mozilla/native-messaging-hosts/org.keepassxc.keepassxc_browser.json" > "$HOME/.mozilla/native-messaging-hosts/org.keepassxc.keepassxc_browser.sorted.json"
+          jq -r -S 'del(.path)' "$HOME/.config/chromium/NativeMessagingHosts/org.keepassxc.keepassxc_browser.json" > "$HOME/.config/chromium/NativeMessagingHosts/org.keepassxc.keepassxc_browser.sorted.json"
+          
+          for browser in org.mozilla.firefox/.mozilla io.gitlab.librewolf-community/.librewolf app.zen_browser.zen/.zen net.mullvad.MullvadBrowser/.mullvad
+          do
+            diff -q "$HOME/.mozilla/native-messaging-hosts/keepassxc-proxy" "$HOME/.var/app/${browser}/native-messaging-hosts/keepassxc-proxy" || {
+              echo "ERROR: keepassxc-proxy was not installed correctly in ${browser}!"
+              exit 1
+            }
+            diff -q "$HOME/.mozilla/native-messaging-hosts/org.keepassxc.keepassxc_browser.sorted.json" <(jq -r -S 'del(.path)' "$HOME/.var/app/${browser}/native-messaging-hosts/org.keepassxc.keepassxc_browser.json") || {
+              echo "ERROR: org.keepassxc.keepassxc_browser.json was not installed correctly in ${browser}!"
+              diff "$HOME/.mozilla/native-messaging-hosts/org.keepassxc.keepassxc_browser.sorted.json" <(jq -r -S . "$HOME/.var/app/${browser}/native-messaging-hosts/org.keepassxc.keepassxc_browser.json")
+              exit 1
+            }          
+          done
+          
+          for browser in org.chromium.Chromium/config/chromium com.brave.Browser/config/BraveSoftware/Brave-Browser
+          do
+            diff -q "$HOME/.config/chromium/NativeMessagingHosts/keepassxc-proxy" "$HOME/.var/app/${browser}/NativeMessagingHosts/keepassxc-proxy" || {
+              echo "ERROR: keepassxc-proxy was not installed correctly in ${browser}!"
+              exit 1
+            }
+            
+            diff -q "$HOME/.config/chromium/NativeMessagingHosts/org.keepassxc.keepassxc_browser.sorted.json" <(jq -r -S 'del(.path)' "$HOME/.var/app/${browser}/NativeMessagingHosts/org.keepassxc.keepassxc_browser.json") || {
+              echo "ERROR: org.keepassxc.keepassxc_browser.json was not installed correctly in ${browser}!"
+              diff "$HOME/.config/chromium/NativeMessagingHosts/org.keepassxc.keepassxc_browser.sorted.json" <(jq -r -S . "$HOME/.var/app/${browser}/NativeMessagingHosts/org.keepassxc.keepassxc_browser.json")
+              exit 1
+            }          
+          done
+          
+          for browser in com.google.Chrome/config/google-chrome
+          do
+            if [[ -f "$HOME/.var/app/${browser}/NativeMessagingHosts/org.keepassxc.keepassxc_browser.json" ]]
+            then
+              echo "ERROR: keepassxc native messaging config was setup for browser ${browser}, despite it not being installed in the system."
+              exit 1
+            fi
+          done
+          
+          for app in org.mozilla.firefox io.gitlab.librewolf-community app.zen_browser.zen net.mullvad.MullvadBrowser org.chromium.Chromium com.brave.Browser
+          do
+            flatpak override --user --show "$app" | grep filesystems=xdg-run/app/org.keepassxc.KeePassXC:ro > /dev/null || {
+              echo "ERROR: Missing flatpak permission to access keepassxc socket for ${app}!"
+              flatpak override --user --show "$app"
+              exit 1
+            }
+          done
+
+  release:
+    if: ${{ github.event_name == 'workflow_dispatch' || startsWith(github.ref, 'refs/tags/v') }}
+    runs-on: ubuntu-latest
+    needs:
+      - test
+      - build-keepassxc-proxy
+    defaults:
+      run:
+        shell: bash
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+        with:
+          ref: "${{ github.head_ref || github.ref_name }}"
+      - name: Download keepassxc-proxy
+        uses: actions/download-artifact@v4
+        with:
+          name: keepassxc-proxy
+      - name: Create release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VERSION: "${{ github.head_ref || github.ref_name }}"
+        run: |
+          subject="$(git tag -n10 --format="%(contents:subject)" "${{ env.VERSION }}")"
+          body="$(git tag -n30 --format="%(contents:body)" "${{ env.VERSION }}")"
+          
+          gh release create -F - "${{ env.VERSION }}" <<EOF
+          ${subject:-No message found}
+          
+          ${body}
+          EOF
+          
+          gh release upload "${{ env.VERSION }}" keepassxc-proxy
+          mv main.py fix-keepassxc-flatpak-browsers.py
+          gh release upload "${{ env.VERSION }}" fix-keepassxc-flatpak-browsers.py

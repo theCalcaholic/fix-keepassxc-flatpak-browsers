@@ -5,7 +5,7 @@ During my usage, the result has been stable for months without having to refresh
 
 ## Requirements
 
-- **podman:** At the moment, this script requires podman to be installed. This requirement will be removed in the future.
+- **podman:** At the moment, this script requires podman for building [keepassxc-proxy-rust](https://github.com/varjolintu/keepassxc-proxy-rust). This requirement will be removed in the future.
 - **Zen Browser Workaround:** The [Zen browser](https://zen-browser.app/) currently requires this workaround to function correctly:
   ```bash
   flatpak override app.zen_browser.zen --persist=.mozilla \
@@ -26,6 +26,11 @@ During my usage, the result has been stable for months without having to refresh
 3. Restart KeePassXC and your browsers
 
 ## Credits
+
+This project is based of other peoples' work, namely:
+
+- [KeePassXC](https://keepassxc.org)
+- [keepassxc-proxy-rust](https://github.com/varjolintu/keepassxc-proxy-rust)
 
 Inspiration has been taken from a number of articles across the web, notably:
 

@@ -3,6 +3,19 @@
 This repository provides a script which automatically configures detected firefox and chromium based browsers that are installed as flatpaks to communicate with (the flatpak version of) KeepassXC.
 During my usage, the result has been stable for months without having to refresh the setup, however, it's not impossible for this to break eventually (at which point you will likely just have to rerun the script).
 
+## Supported Browsers
+
+- Firefox <sup>confirmed</sup>
+- Librewolf <sup>confirmed</sup>
+- Zen Browser <sup>confirmed</sup>
+- Chromium <sup>in testing</sup>
+- Google Chrome <sup>in testing</sup>
+- Brave <sup>in testing</sup>
+- Floorp <sup>in testing</sup>
+- Ungoogled Chromium <sup>in testing</sup>
+- Waterfox <sup>in testing</sup>
+- Vivaldi <sup>in testing</sup>
+
 ## Requirements
 
 - **Zen Browser Workaround:** The [Zen browser](https://zen-browser.app/) currently requires this workaround to function correctly:

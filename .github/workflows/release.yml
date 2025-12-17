@@ -90,7 +90,7 @@ jobs:
           jq -r -S 'del(.path)' "$HOME/.mozilla/native-messaging-hosts/org.keepassxc.keepassxc_browser.json" > "$HOME/.mozilla/native-messaging-hosts/org.keepassxc.keepassxc_browser.sorted.json"
           jq -r -S 'del(.path)' "$HOME/.config/chromium/NativeMessagingHosts/org.keepassxc.keepassxc_browser.json" > "$HOME/.config/chromium/NativeMessagingHosts/org.keepassxc.keepassxc_browser.sorted.json"
           
-          for browser in org.mozilla.firefox/.mozilla io.gitlab.librewolf-community/.librewolf app.zen_browser.zen/.zen net.mullvad.MullvadBrowser/.mullvad
+          for browser in org.mozilla.firefox/.mozilla io.gitlab.librewolf-community/.librewolf app.zen_browser.zen/.zen app.zen_browser.zen/.mozilla net.mullvad.MullvadBrowser/.mullvad
           do
             diff -q "$HOME/.mozilla/native-messaging-hosts/keepassxc-proxy" "$HOME/.var/app/${browser}/native-messaging-hosts/keepassxc-proxy" || {
               echo "ERROR: keepassxc-proxy was not installed correctly in ${browser}!"

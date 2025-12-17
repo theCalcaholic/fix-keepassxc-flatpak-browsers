@@ -8,6 +8,19 @@ import shutil
 import subprocess
 import urllib.request
 
+def apply_zen_workaround():
+    subprocess.run(
+        ["flatpak", "override", "app.zen_browser.zen", "--persist=.mozilla"],
+        check=True
+    )
+    moz_path = Path.home() / '.var/app/app.zen_browser.zen/.mozilla'
+    moz_path.mkdir(parents=True, exist_ok=True)
+    (moz_path / 'native-messaging-hosts').symlink_to(Path('../.zen/native-messaging-hosts'))
+
+
+quirks = {
+    "app.zen_browser.zen": apply_zen_workaround
+}
 
 class BrowserConfig:
     def __init__(self, browser_name, flatpak_id, config_dir, browser_type):
@@ -41,10 +54,16 @@ target_browsers = [
     BrowserConfig("Firefox", "org.mozilla.firefox", ".mozilla", "firefox"),
     BrowserConfig("Librewolf", "io.gitlab.librewolf-community", ".librewolf", "firefox"),
     BrowserConfig("Zen Browser", "app.zen_browser.zen", ".zen", "firefox"),
-    BrowserConfig("Mullvad Browser", "net.mullvad.MullvadBrowser", ".mullvad", "firefox"),
+    # Disabled because this might be a bad idea :)
+    #BrowserConfig("Mullvad Browser", "net.mullvad.MullvadBrowser", ".mullvad", "firefox"),
     BrowserConfig("Chromium", "org.chromium.Chromium", "config/chromium", "chromium"),
     BrowserConfig("Google Chrome", "com.google.Chrome", "config/google-chrome", "chromium"),
     BrowserConfig("Brave Browser", "com.brave.Browser", "config/BraveSoftware/Brave-Browser", "chromium"),
+    BrowserConfig("Floorp", "one.ablaze.floorp", ".floorp", "firefox"),
+    BrowserConfig("Ungoogled Chromium", "io.github.ungoogled_software.ungoogled_chromium", "config/chromium", "chromium"),
+    BrowserConfig("Waterfox", "net.waterfox.waterfox", ".mozilla", "firefox"),
+    BrowserConfig("Vivaldi", "com.vivaldi.Vivaldi", "config/vivaldi", "chromium"),
+
 ]
 
 flatpak_prefix_path = Path.home() / ".var/app"
@@ -122,5 +141,8 @@ for browser in target_browsers:
 
     with browser.nmh_kpxc_path.open(mode="w", encoding="utf-8") as f:
         json.dump(kpxc_cfg_data, f)
+
+    if browser.flatpak_id in quirks:
+        quirks[browser.flatpak_id]()
 
     print("<= done.")

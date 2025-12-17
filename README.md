@@ -18,12 +18,6 @@ During my usage, the result has been stable for months without having to refresh
 
 ## Requirements
 
-- **Zen Browser Workaround:** The [Zen browser](https://zen-browser.app/) currently requires this workaround to function correctly:
-  ```bash
-  flatpak override app.zen_browser.zen --persist=.mozilla \
-  && mkdir -p "$HOME/.var/app/app.zen_browser.zen/.mozilla" \
-  && ln -s ../.zen/native-messaging-hosts "$HOME/.var/app/app.zen_browser.zen/.mozilla/native-messaging-hosts"
-  ```
 - Only works on x86_64 architectures at the moment
 
 ## Usage

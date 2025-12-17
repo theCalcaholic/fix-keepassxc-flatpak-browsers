@@ -10,7 +10,7 @@ import urllib.request
 
 def apply_zen_workaround():
     subprocess.run(
-        ["flatpak", "override", "app.zen_browser.zen", "--persist=.mozilla"],
+        ["flatpak", "override", "app.zen_browser.zen", "--user", "--persist=.mozilla"],
         check=True
     )
     moz_path = Path.home() / '.var/app/app.zen_browser.zen/.mozilla'

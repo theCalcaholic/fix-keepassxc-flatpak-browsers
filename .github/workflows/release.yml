@@ -36,18 +36,41 @@ jobs:
           ref: "${{ github.head_ref || github.ref_name }}"
       - name: Install Flatpaks to test
         run: |
+          sudo apt-get update
           sudo apt-get install -y flatpak
           sudo flatpak remote-add --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo
-          for app in org.mozilla.firefox io.gitlab.librewolf-community app.zen_browser.zen net.mullvad.MullvadBrowser org.chromium.Chromium com.brave.Browser com.google.Chrome
+          for app in \
+            org.mozilla.firefox \
+            io.gitlab.librewolf-community \
+            app.zen_browser.zen \
+            org.chromium.Chromium \
+            com.brave.Browser \
+            one.ablaze.floorp \
+            io.github.ungoogled_software.ungoogled_chromium \
+            net.waterfox.waterfox \
+            com.vivaldi.Vivaldi
           do
             sudo flatpak install --noninteractive "$app"
           done
       - name: Setup test directories
         run: |
-          mkdir -p "$HOME/.var/app/"{org.mozilla.firefox,io.gitlab.librewolf-community,app.zen_browser.zen,net.mullvad.MullvadBrowser,org.chromium.Chromium,com.brave.Browser}/
-          mkdir -p "$HOME/.var/app/"{org.mozilla.firefox/.mozilla/native-messaging-hosts,com.brave.Browser/config/BraveSoftware/Brave-Browser/NativeMessagingHosts}
-          echo 'deprecated' > "$HOME/.var/app/org.mozilla.firefox/.mozilla/native-messaging-hosts/keepassxc-proxy"
-          echo 'deprecated' > "$HOME/.var/app/com.brave.Browser/config/BraveSoftware/Brave-Browser/NativeMessagingHosts/org.keepassxc.keepassxc_browser.json"
+          mkdir -p "$HOME/.var/app"
+          cd "$HOME/.var/app"
+          mkdir -p org.mozilla.firefox \
+            io.gitlab.librewolf-community \
+            app.zen_browser.zen \
+            org.chromium.Chromium \
+            com.brave.Browser \
+            com.chromium.Chromium \
+            one.ablaze.floorp \
+            io.github.ungoogled_software.ungoogled_chromium \
+            net.waterfox.waterfox \
+            com.vivaldi.Vivaldi
+          mkdir -p \
+            org.mozilla.firefox/.mozilla/native-messaging-hosts \
+            com.brave.Browser/config/BraveSoftware/Brave-Browser/NativeMessagingHosts
+          echo 'deprecated' > "org.mozilla.firefox/.mozilla/native-messaging-hosts/keepassxc-proxy"
+          echo 'deprecated' > "com.brave.Browser/config/BraveSoftware/Brave-Browser/NativeMessagingHosts/org.keepassxc.keepassxc_browser.json"
           mkdir -p "$HOME/.mozilla/native-messaging-hosts" "$HOME/.config/chromium/NativeMessagingHosts"
           cat <<'EOF' > "$HOME/.mozilla/native-messaging-hosts/org.keepassxc.keepassxc_browser.json"
           {
@@ -90,7 +113,13 @@ jobs:
           jq -r -S 'del(.path)' "$HOME/.mozilla/native-messaging-hosts/org.keepassxc.keepassxc_browser.json" > "$HOME/.mozilla/native-messaging-hosts/org.keepassxc.keepassxc_browser.sorted.json"
           jq -r -S 'del(.path)' "$HOME/.config/chromium/NativeMessagingHosts/org.keepassxc.keepassxc_browser.json" > "$HOME/.config/chromium/NativeMessagingHosts/org.keepassxc.keepassxc_browser.sorted.json"
           
-          for browser in org.mozilla.firefox/.mozilla io.gitlab.librewolf-community/.librewolf app.zen_browser.zen/.zen app.zen_browser.zen/.mozilla net.mullvad.MullvadBrowser/.mullvad
+          for browser in \
+            org.mozilla.firefox/.mozilla \
+            io.gitlab.librewolf-community/.librewolf \
+            app.zen_browser.zen/.zen \
+            app.zen_browser.zen/.mozilla \
+            one.ablaze.floorp/.floorp \
+            net.waterfox.waterfox/.mozilla
           do
             diff -q "$HOME/.mozilla/native-messaging-hosts/keepassxc-proxy" "$HOME/.var/app/${browser}/native-messaging-hosts/keepassxc-proxy" || {
               echo "ERROR: keepassxc-proxy was not installed correctly in ${browser}!"
@@ -103,7 +132,11 @@ jobs:
             }          
           done
           
-          for browser in org.chromium.Chromium/config/chromium com.brave.Browser/config/BraveSoftware/Brave-Browser
+          for browser in \
+            org.chromium.Chromium/config/chromium \
+            com.brave.Browser/config/BraveSoftware/Brave-Browser \
+            io.github.ungoogled_software.ungoogled_chromium/config/chromium \
+            com.vivaldi.Vivaldi/config/vivaldi
           do
             diff -q "$HOME/.config/chromium/NativeMessagingHosts/keepassxc-proxy" "$HOME/.var/app/${browser}/NativeMessagingHosts/keepassxc-proxy" || {
               echo "ERROR: keepassxc-proxy was not installed correctly in ${browser}!"
@@ -126,7 +159,16 @@ jobs:
             fi
           done
           
-          for app in org.mozilla.firefox io.gitlab.librewolf-community app.zen_browser.zen net.mullvad.MullvadBrowser org.chromium.Chromium com.brave.Browser
+          for app in \
+            org.mozilla.firefox \
+            io.gitlab.librewolf-community \
+            app.zen_browser.zen \
+            org.chromium.Chromium \
+            com.brave.Browser \
+            one.ablaze.floorp \
+            io.github.ungoogled_software.ungoogled_chromium \
+            net.waterfox.waterfox \
+            com.vivaldi.Vivaldi
           do
             flatpak override --user --show "$app" | grep filesystems=xdg-run/app/org.keepassxc.KeePassXC:ro > /dev/null || {
               echo "ERROR: Missing flatpak permission to access keepassxc socket for ${app}!"

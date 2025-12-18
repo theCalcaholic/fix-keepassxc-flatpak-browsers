@@ -13,8 +13,16 @@ def apply_zen_workaround():
         ["flatpak", "override", "app.zen_browser.zen", "--user", "--persist=.mozilla"],
         check=True
     )
+    nmh_path = Path.home() / '.var/app/app.zen_browser.zen/.zen/native-messaging-hosts'
     moz_path = Path.home() / '.var/app/app.zen_browser.zen/.mozilla'
     moz_path.mkdir(parents=True, exist_ok=True)
+    moz_nmh_path = moz_path / 'native-messaging-hosts'
+    if moz_nmh_path.is_symlink() and moz_nmh_path.readlink().absolute() == nmh_path.absolute():
+        return
+    if moz_nmh_path.exists() and not moz_nmh_path.is_symlink():
+        for item in moz_nmh_path.glob("*"):
+            shutil.move(item, nmh_path)
+        moz_nmh_path.rmdir()
     (moz_path / 'native-messaging-hosts').symlink_to(Path('../.zen/native-messaging-hosts'))
 
 
@@ -77,10 +85,18 @@ chromium_host_nmh_kpxc_config = chromium_host_cfg_dir / "NativeMessagingHosts" /
 firefox_host_nmh_kpcx_config.parent.mkdir(parents=True, exist_ok=True)
 chromium_host_nmh_kpxc_config.parent.mkdir(parents=True, exist_ok=True)
 
-with firefox_host_nmh_kpcx_config.open(mode="r", encoding="utf-8") as f:
-    firefox_kpxc_nmh_config_data = json.load(f)
-with chromium_host_nmh_kpxc_config.open(mode="r", encoding="utf-8") as f:
-    chromium_kpxc_nmh_config_data = json.load(f)
+firefox_kpxc_nmh_config_data: dict | None = None
+chromium_kpxc_nmh_config_data: dict | None = None
+if firefox_host_nmh_kpcx_config.exists():
+    with firefox_host_nmh_kpcx_config.open(mode="r", encoding="utf-8") as f:
+        firefox_kpxc_nmh_config_data = json.load(f)
+else:
+    print("WARN: KeepassXC browser integration for firefox has not been enabled. Firefox based browsers will be skipped.")
+if chromium_host_nmh_kpxc_config.exists():
+    with chromium_host_nmh_kpxc_config.open(mode="r", encoding="utf-8") as f:
+        chromium_kpxc_nmh_config_data = json.load(f)
+else:
+    print("WARN: KeepassXC browser integration for chromium has not been enabled. Chromium based browsers will be skipped.")
 
 container_cmd: str | None = None
 if shutil.which("podman") is not None:
@@ -115,6 +131,13 @@ flatpaks = os.listdir(Path.home() / ".var/app")
 for browser in target_browsers:
     if not browser.flatpak_id in flatpaks:
         continue
+    if browser.browser_type == 'firefox' and firefox_kpxc_nmh_config_data is None:
+        print(f"-- Skipping {browser.name} (firefox browser integration not enabled in KeepassXC)")
+        continue
+    if browser.browser_type == 'chromium' and chromium_kpxc_nmh_config_data is None:
+        print(f"-- Skipping {browser.name} (firefox browser integration not enabled in KeepassXC)")
+        continue
+
     print(f"=> Setting up {browser.name}")
     res2 = subprocess.run([
         "flatpak", "override",

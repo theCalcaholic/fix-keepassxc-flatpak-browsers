@@ -81,7 +81,6 @@ chromium_host_cfg_dir = Path.home() / ".config/chromium"
 chromium_host_nmh_kpxc_config = chromium_host_cfg_dir / "NativeMessagingHosts" / kpxc_nmh_config_filename
 
 
-
 firefox_host_nmh_kpcx_config.parent.mkdir(parents=True, exist_ok=True)
 chromium_host_nmh_kpxc_config.parent.mkdir(parents=True, exist_ok=True)
 
@@ -107,9 +106,16 @@ elif shutil.which("docker") is not None:
         container_cmd = "docker"
 
 if container_cmd is None:
+    choice = input("Neither docker nor podman are found on your machine, however a container runtime is required to "
+                   "build a required executable (keepassxc-proxy). If you would like to download a precompiled binary "
+                   "instead, pleasetype 'yes' and hit enter. ")
+    if choice != "yes":
+        print("Exiting (user choice) ...")
+        sys.exit(1)
     urllib.request.urlretrieve("https://github.com/theCalcaholic/fix-keepassxc-flatpak-browsers/releases/latest/download/keepassxc-proxy", firefox_host_nmh_kpcx_config.parent / 'keepassxc-proxy')
     os.chmod(firefox_host_nmh_kpcx_config.parent / 'keepassxc-proxy', 0o750)
 else:
+    print(f"Compiling keepassxc-proxy from github.com/varjolintu/keepassxc-proxy-rust with {container_cmd}...")
     res1 = subprocess.run([
         container_cmd, "run", "--rm",
         "-v", str(firefox_host_nmh_kpcx_config.parent) + ":/nmh:z",
@@ -123,6 +129,7 @@ else:
     if res1.returncode != 0:
         print(f"WARN: Retrieving keepassxc-proxy failed with exit code {res1.returncode}: '{res1.stderr}'")
         sys.exit(1)
+    print("Done")
 
 shutil.copy(firefox_host_nmh_kpcx_config.parent / "keepassxc-proxy", chromium_host_nmh_kpxc_config.parent / "keepassxc-proxy")
 

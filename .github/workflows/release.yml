@@ -217,6 +217,8 @@ jobs:
           
           ${body}
           
+          SHA256 sum of the keepassxc-proxy binary (built on [Github Workflow](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
+          
           ${kpxc_codeblock}
           EOF
           

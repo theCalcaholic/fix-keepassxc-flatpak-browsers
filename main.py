@@ -8,13 +8,14 @@ import shutil
 import subprocess
 import urllib.request
 
-def apply_zen_workaround():
+
+def workaround_link_mozilla_cfg_folder(flatpak_id: str, cfg_folder: str):
     subprocess.run(
-        ["flatpak", "override", "app.zen_browser.zen", "--user", "--persist=.mozilla"],
+        ["flatpak", "override", flatpak_id, "--user", "--persist=.mozilla"],
         check=True
     )
-    nmh_path = Path.home() / '.var/app/app.zen_browser.zen/.zen/native-messaging-hosts'
-    moz_path = Path.home() / '.var/app/app.zen_browser.zen/.mozilla'
+    nmh_path = Path.home() / '.var/app' / flatpak_id / cfg_folder / 'native-messaging-hosts'
+    moz_path = Path.home() / '.var/app' / flatpak_id / '.mozilla'
     moz_path.mkdir(parents=True, exist_ok=True)
     moz_nmh_path = moz_path / 'native-messaging-hosts'
     if moz_nmh_path.is_symlink() and moz_nmh_path.readlink().absolute() == nmh_path.absolute():
@@ -23,11 +24,12 @@ def apply_zen_workaround():
         for item in moz_nmh_path.glob("*"):
             shutil.move(item, nmh_path)
         moz_nmh_path.rmdir()
-    (moz_path / 'native-messaging-hosts').symlink_to(Path('../.zen/native-messaging-hosts'))
+    (moz_path / 'native-messaging-hosts').symlink_to(Path('../') / cfg_folder / 'native-messaging-hosts')
 
 
 quirks = {
-    "app.zen_browser.zen": apply_zen_workaround
+    "app.zen_browser.zen": lambda: workaround_link_mozilla_cfg_folder('app.zen_browser.zen', '.zen'),
+    "one.ablaze.floorp": lambda: workaround_link_mozilla_cfg_folder('one.ablaze.floorp', '.floorp')
 }
 
 class BrowserConfig:

@@ -73,6 +73,7 @@ target_browsers = [
     BrowserConfig("Ungoogled Chromium", "io.github.ungoogled_software.ungoogled_chromium", "config/chromium", "chromium"),
     BrowserConfig("Waterfox", "net.waterfox.waterfox", ".mozilla", "firefox"),
     BrowserConfig("Vivaldi", "com.vivaldi.Vivaldi", "config/vivaldi", "chromium"),
+    BrowserConfig("Microsoft Edge", "com.microsoft.Edge", "config/microsoft-edge", "chromium"),
 
 ]
 

@@ -15,6 +15,7 @@ During my usage, the result has been stable for months without having to refresh
 - Ungoogled Chromium <sup>in testing</sup>
 - Waterfox <sup>in testing</sup>
 - Vivaldi <sup>in testing</sup>
+- MS Edge <sup>in testing</sup>
 
 ## Requirements
 
